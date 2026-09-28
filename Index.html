@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sorpresa de Corazones</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #03030d;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    canvas {
+      display: block;
+    }
+
+    /* Pantalla de inicio / Bienvenida */
+    #start-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(3, 3, 13, 0.95);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      transition: opacity 0.8s ease, visibility 0.8s ease;
+    }
+
+    #start-btn {
+      padding: 16px 32px;
+      font-size: 20px;
+      font-weight: bold;
+      color: #ffffff;
+      background: linear-gradient(135deg, #3b82f6, #ec4899);
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(236, 72, 153, 0.5), 0 0 40px rgba(59, 130, 246, 0.3);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      animation: pulseBtn 2s infinite;
+    }
+
+    #start-btn:hover {
+      transform: scale(1.08);
+      box-shadow: 0 0 30px rgba(236, 72, 153, 0.8), 0 0 60px rgba(59, 130, 246, 0.5);
+    }
+
+    @keyframes pulseBtn {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    .hint {
+      position: absolute;
+      bottom: 25px;
+      width: 100%;
+      text-align: center;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 15px;
+      pointer-events: none;
+      letter-spacing: 1px;
+      text-shadow: 0 0 8px rgba(136, 204, 255, 0.6);
+      opacity: 0;
+      transition: opacity 1s ease;
+    }
+
+    .hint.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Botón de Inicio -->
+  <div id="start-overlay">
+    <button id="start-btn">Pulsa aquí para una sorpresa</button>
+  </div>
+
+  <div class="hint" id="hint-text">Haz clic en cualquier parte</div>
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const startOverlay = document.getElementById('start-overlay');
+    const startBtn = document.getElementById('start-btn');
+    const hintText = document.getElementById('hint-text');
+
+    // --- Configuración de Música por URL ---
+    // Reemplaza el enlace de abajo por la URL directa de tu canción (archivo .mp3)
+    const bgMusic = new Audio('https://s17.aconvert.com/convert/p3r68-cdx67/l2mja-6im80.mp3');
+    bgMusic.loop = true;
+    bgMusic.volume = 0.8; // Ajusta el volumen de 0.0 a 1.0
+
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    });
+
+    const messages = [
+      "Liz debo decirte",
+      "La mañana es tan hermosa como tu sonrisa",
+      "Y el dia dulce como tu mirada",
+      "Si la belleza tuviera voz",
+      "Sonaria como la tuya",
+      "Amo cada cosa de ti",
+      "Incluso las pequeñas cosas que no te gustan de ti",
+      "Estare para ti siempre",
+      "Te apoyare en todo",
+      "La vida es mejor contigo",
+      "No hay imposibles",
+      "Si se trata de ti",
+      "Da tu mejor efuerzo",
+      "Y cuando no puedas mas",
+      "Toma mi mano y te levantare"
+    ];
+
+    let messageIndex = 0;
+    let isStarted = false;
+
+    const particles = [];
+    const floatingMessages = [];
+    const backgroundLights = [];
+
+    const colors = [
+      '#ffffff',
+      '#88ccff',
+      '#a066ff',
+      '#d488ff',
+      '#3b82f6',
+      '#ec4899'
+    ];
+
+    // --- Lucecita/Partículas flotantes de fondo ---
+    class BackgroundLight {
+      constructor() {
+        this.reset();
+        this.y = Math.random() * height;
+      }
+
+      reset() {
+        this.x = Math.random() * width;
+        this.y = height + Math.random() * 20;
+        this.size = Math.random() * 2.5 + 0.5;
+        this.speedY = Math.random() * 0.4 + 0.15;
+        this.speedX = (Math.random() - 0.5) * 0.2;
+        this.alpha = Math.random() * 0.6 + 0.2;
+        this.maxAlpha = this.alpha;
+        this.color = colors[Math.floor(Math.random() * colors.length)];
+      }
+
+      update() {
+        this.y -= this.speedY;
+        this.x += this.speedX;
+
+        if (this.y < -10) {
+          this.reset();
+        }
+      }
+
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    const bgLightCount = 70;
+    for (let i = 0; i < bgLightCount; i++) {
+      backgroundLights.push(new BackgroundLight());
+    }
+
+    // --- Partículas de la explosión en corazón ---
+    class Particle {
+      constructor(x, y, vx, vy, color) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.color = color;
+        this.alpha = 1;
+        this.decay = Math.random() * 0.015 + 0.01;
+        this.size = Math.random() * 2 + 1.5;
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vx *= 0.96;
+        this.vy *= 0.96;
+        this.alpha -= this.decay;
+      }
+
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = Math.max(this.alpha, 0);
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // --- Texto Flotante en el Centro ---
+    class FloatingMessage {
+      constructor(x, y, text) {
+        this.x = x;
+        this.y = y;
+        this.text = text;
+        this.alpha = 1;
+        this.decay = 0.008;
+      }
+
+      update() {
+        this.y -= 0.3;
+        this.alpha -= this.decay;
+      }
+
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = Math.max(this.alpha, 0);
+        ctx.font = 'bold 22px sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#88ccff';
+        ctx.shadowBlur = 12;
+        ctx.textAlign = 'center';
+        ctx.fillText(this.text, this.x, this.y);
+        ctx.restore();
+      }
+    }
+
+    function createHeartBurst(originX, originY) {
+      const particleCount = 120;
+      
+      for (let i = 0; i < particleCount; i++) {
+        const t = Math.PI - (2 * Math.PI * i / particleCount);
+        const heartX = 16 * Math.pow(Math.sin(t), 3);
+        const heartY = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+        
+        const speedMultiplier = Math.random() * 0.25 + 0.35;
+        const vx = heartX * speedMultiplier;
+        const vy = heartY * speedMultiplier;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+
+        particles.push(new Particle(originX, originY, vx, vy, color));
+      }
+
+      floatingMessages.push(new FloatingMessage(originX, originY, messages[messageIndex]));
+      messageIndex = (messageIndex + 1) % messages.length;
+    }
+
+    // Iniciar experiencia al presionar el botón
+    startBtn.addEventListener('click', () => {
+      // Iniciar la música
+      bgMusic.play().catch(err => {
+        console.log("Error al reproducir audio:", err);
+      });
+
+      startOverlay.style.opacity = '0';
+      startOverlay.style.visibility = 'hidden';
+      hintText.classList.add('visible');
+      isStarted = true;
+
+      // Generar un primer corazón de bienvenida en el centro
+      createHeartBurst(width / 2, height / 2);
+    });
+
+    // Clics en la pantalla
+    window.addEventListener('click', (e) => {
+      if (!isStarted) return;
+      if (e.target === startBtn || (startOverlay.contains(e.target) && startOverlay.style.visibility !== 'hidden')) return;
+
+      createHeartBurst(e.clientX, e.clientY);
+    });
+
+    // Bucle principal de animación
+    function animate() {
+      ctx.fillStyle = 'rgba(3, 3, 13, 0.25)';
+      ctx.fillRect(0, 0, width, height);
+
+      backgroundLights.forEach(light => {
+        light.update();
+        light.draw();
+      });
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        particles[i].update();
+        particles[i].draw();
+        if (particles[i].alpha <= 0) {
+          particles.splice(i, 1);
+        }
+      }
+
+      for (let i = floatingMessages.length - 1; i >= 0; i--) {
+        floatingMessages[i].update();
+        floatingMessages[i].draw();
+        if (floatingMessages[i].alpha <= 0) {
+          floatingMessages.splice(i, 1);
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
